@@ -7,7 +7,7 @@
 function fetch_img() {
     let img_qoi = document.querySelectorAll('img[type="image/qoi"]');
     //let pic_qoi = document.querySelectorAll('picture source[type="image/qoi"]');
-    img_qoi.forEach(function (imgElm) {
+    img_qoi.forEach(function img_qoi_fetch(imgElm) {
         fetch(imgElm.src, {cache:'force-cache'})
           .then(response => {
               if (!response.ok) {
@@ -17,7 +17,7 @@ function fetch_img() {
           })
           .then(buf => {
               if (buf.byteLength < 22) {  // Total size of header 14 bytes and padding 8 bytes.
-                  console.error("Too short byteLength:", buf.byteLength);
+                  console.error("qoi-html: Too short byteLength:", buf.byteLength);
                   reject();
               }
               let rawBuffer = new Uint8Array(buf);
@@ -25,8 +25,10 @@ function fetch_img() {
           })
           .then(qoiData => {
               if (qoiData === null) {
-                  console.error("Failed to decode.");
+                  console.error("qoi-html: Failed to decode.");
                   reject();
+              } else if (qoiData.data.length % (qoiData.width * qoiData.height * 4) > 0) {
+                  console.error("qoi-html: Data index size is short or long.");
               }
               show_img(qoiData, imgElm);
           })
@@ -54,7 +56,8 @@ function decode_qoi(arrbuf, byteLen) {
     }
 
     // Decoding data
-    const pxLen = header.width * header.height * header.channels;
+    //   Resulted header.channels must be '4' for the ImageData() of html canvas.
+    const pxLen = header.width * header.height * 4;
     const result = new Uint8Array(pxLen);
     const index_rgba = new Uint32Array(64);
     let arrPos = 14;
@@ -65,7 +68,7 @@ function decode_qoi(arrbuf, byteLen) {
     let alpha = 255;
     let run = 0;
 
-    for (let pxlPos = 0; pxlPos < pxLen; pxlPos += header.channels) {
+    for (let pxlPos = 0; pxlPos < pxLen; pxlPos += 4) {
         if (run > 0) {
             run--;
         } else {
@@ -126,13 +129,11 @@ function decode_qoi(arrbuf, byteLen) {
         result[pxlPos] = red;
         result[pxlPos + 1] = green;
         result[pxlPos + 2] = blue;
-        if (header.channels === 4) { // RGBA
-            result[pxlPos + 3] = alpha;
-        }
+        result[pxlPos + 3] = (header.channels === 4) ? alpha : 255;
     }
 
-    if (arrPos !== byteLen - 8) {
-        console.error('decode_qoi: Lacks some pixel or padding:', 
+    if (arrPos < byteLen - 8) {
+        console.log('decode_qoi: Lacks some pixel or padding:', 
                       (byteLen - 8 - arrPos), 'bytes.');
     }
 
@@ -170,4 +171,4 @@ function show_img(qoiData, img_elm) {
 
 window.addEventListener('load', fetch_img);
 
-})(window);
+})();
