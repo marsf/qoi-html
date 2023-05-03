@@ -4,42 +4,83 @@
 (function() {
 "use strict";
 
-function fetch_img() {
-    let img_qoi = document.querySelectorAll('img[type="image/qoi"]');
-    //let pic_qoi = document.querySelectorAll('picture source[type="image/qoi"]');
-    img_qoi.forEach(function img_qoi_fetch(imgElm) {
-        fetch(imgElm.src, {cache:'force-cache'})
-          .then(response => {
-              if (!response.ok) {
-                  throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-              }
-              return response.arrayBuffer();
-          })
-          .then(buf => {
-              if (buf.byteLength < 22) {  // Total size of header 14 bytes and padding 8 bytes.
-                  console.error("qoi-html: Too short byteLength:", buf.byteLength);
-                  reject();
-              }
-              let rawBuffer = new Uint8Array(buf);
-              return decode_qoi(rawBuffer, buf.byteLength);
-          })
-          .then(qoiData => {
-              if (qoiData === null) {
-                  console.error("qoi-html: Failed to decode.");
-                  reject();
-              } else if (qoiData.data.length % (qoiData.width * qoiData.height * 4) > 0) {
-                  console.error("qoi-html: Data index size is short or long.");
-              }
-              show_img(qoiData, imgElm);
-          })
-          .catch((reason) => {
-              console.error(reason);
-          });
-    });
-    window.removeEventListener('load', fetch_img);
+function pick_qoisrc() {
+    var qoi_images_elm = [];
+    // Pick form 'img' elements.
+    let img_elm = document.querySelectorAll('img[type="image/qoi"]');
+    for (var imgs of img_elm) {
+      qoi_images_elm.push(imgs);
+    }
+    // Pick form 'picture' container elements.
+    let picture_elm = document.querySelectorAll('picture');
+    for (var i=0,l=picture_elm.length; i<l; i++) {
+      var pic_img = picture_elm[i].querySelector('img');
+      var picsrc_elm = picture_elm[i].querySelector('source[type="image/qoi"]');
+      if (picsrc_elm) {
+        var picsrc_srcset = picsrc_elm.srcset.split(',')[0].trim().split(' ')[0];
+        if (pic_img == null) {
+          // Create dummy img element.
+          pic_img = document.createElement('img');
+          pic_img.setAttribute('type', 'image/qoi');
+          picture_elm[i].appendChild(pic_img);
+          // Copy from source element.
+          pic_img.setAttribute('src', picsrc_srcset);
+        } else if (pic_img.currentSrc !== null && pic_img.getAttribute('type') === 'image/qoi') {
+          // Use img element with 'currentSrc' (may be picked from source element).
+          pic_img.setAttribute('src', pic_img.currentSrc);
+        } else {
+          // Use source element.
+          // It doesn't fallback to original img element, if srcset file is not found.
+          pic_img.setAttribute('src', picsrc_srcset);
+        }
+        qoi_images_elm.push(pic_img);
+      } else {
+        // No source element in the picture element.
+        if (pic_img.getAttribute('type') === 'image/qoi') {
+          qoi_images_elm.push(pic_img);
+        }
+      }
+    }
+    if (qoi_images_elm.length > 0) {
+      fetch_img(qoi_images_elm);
+    }
+
+    window.removeEventListener('load', pick_qoisrc);
 }
 
-// Decoder.
+function fetch_img(qoi_imgs) {
+    qoi_imgs.forEach(function img_qoi_fetch(qoi_src) {
+      fetch(qoi_src.src, {cache:'force-cache'})
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+          }
+          return response.arrayBuffer();
+        })
+        .then(buf => {
+          if (buf.byteLength < 22) {  // Total size of header 14 bytes and padding 8 bytes.
+            console.error("qoi-html: Too short byteLength:", buf.byteLength);
+            reject();
+          }
+          let rawBuffer = new Uint8Array(buf);
+          return decode_qoi(rawBuffer, buf.byteLength);
+        })
+        .then(qoiData => {
+          if (qoiData === null) {
+            console.error("qoi-html: Failed to decode.");
+            reject();
+          } else if (qoiData.data.length % (qoiData.width * qoiData.height * 4) > 0) {
+            console.error("qoi-html: Data index size is short or long.");
+          }
+          show_img(qoiData, qoi_src);
+        })
+        .catch((reason) => {
+          console.error(reason);
+        });
+    });
+}
+
+  // Decoder.
 function decode_qoi(arrbuf, byteLen) {
     const uint8 = new Uint8Array(arrbuf, 0, byteLen);
     // Load header items.
@@ -144,9 +185,9 @@ function decode_qoi(arrbuf, byteLen) {
         channels: header.channels,
         data: result
     };
-}
+  }
 
-function show_img(qoiData, img_elm) {
+  function show_img(qoiData, img_elm) {
     // Initialize a new ImageData object.
     const arr = new Uint8ClampedArray(qoiData.data);
     let imgData = new ImageData(arr, qoiData.width, qoiData.height);
@@ -164,11 +205,11 @@ function show_img(qoiData, img_elm) {
         img_elm.hasAttribute('height')) {
         img_elm.loading = "lazy";
     }
-    img_elm.setAttribute('type', 'image/png');
+    //img_elm.setAttribute('type', 'image/png');
     img_elm.src = canvas.toDataURL();
     canvas.remove();
-}
+  }
 
-window.addEventListener('load', fetch_img);
+window.addEventListener('load', pick_qoisrc);
 
 })();

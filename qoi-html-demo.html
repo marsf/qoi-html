@@ -18,8 +18,15 @@
   RGBA image:<br>
   <img src="./dice.qoi" type="image/qoi" width="30%" height="30%"><br>
   <br>
-  RGB image:<br>
-  <img src="./mushroom.qoi" type="image/qoi"><br>
+  RGB images in picture element:<br>
+  <picture>
+    <source srcset="./mushroom.qoi 1x, ./mushroom2.qoi 1.5x" type="image/qoi">
+    <img src="fungus.png" width="200" height="355">
+  </picture>
+  <picture>
+    <source srcset="./mushroom2.qoi" type="image/qoi">
+    <img src="dice.qoi">
+  </picture>
 </p>
 </body>
 </html>
