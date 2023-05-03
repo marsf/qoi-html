@@ -6,11 +6,13 @@
 
 function pick_qoisrc() {
     var qoi_images_elm = [];
+
     // Pick form 'img' elements.
     let img_elm = document.querySelectorAll('img[type="image/qoi"]');
     for (var imgs of img_elm) {
       qoi_images_elm.push(imgs);
     }
+
     // Pick form 'picture' container elements.
     let picture_elm = document.querySelectorAll('picture');
     for (var i=0,l=picture_elm.length; i<l; i++) {
@@ -41,6 +43,7 @@ function pick_qoisrc() {
         }
       }
     }
+
     if (qoi_images_elm.length > 0) {
       fetch_img(qoi_images_elm);
     }
@@ -185,9 +188,9 @@ function decode_qoi(arrbuf, byteLen) {
         channels: header.channels,
         data: result
     };
-  }
+}
 
-  function show_img(qoiData, img_elm) {
+function show_img(qoiData, img_elm) {
     // Initialize a new ImageData object.
     const arr = new Uint8ClampedArray(qoiData.data);
     let imgData = new ImageData(arr, qoiData.width, qoiData.height);
@@ -208,7 +211,7 @@ function decode_qoi(arrbuf, byteLen) {
     //img_elm.setAttribute('type', 'image/png');
     img_elm.src = canvas.toDataURL();
     canvas.remove();
-  }
+}
 
 window.addEventListener('load', pick_qoisrc);
 
